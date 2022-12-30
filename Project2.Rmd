@@ -1,0 +1,166 @@
+---
+title: "Project 2"
+author: "Parul Gupta - SDS 313 UT Austin"
+date: "2022-11-10"
+output:
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+college <-read.csv('College_Data.csv')
+college1 <-read.csv('DataSet_Admissions.csv')
+```
+
+## Introduction 
+
+As a recent high school graduate, I had to make the difficult decision of choosing where to continue my academics. There were many factors I had to consider such as finances, distance from home, reputation of my major, etc. This project aims to find associations between variables and college decisions. The first data set used for this project was from [Kaggle](https://www.kaggle.com/datasets/yashgpt/us-college-data). The second data set I used was from [Analytix](https://analytix.accesslex.org/download-dataset). I used the dropdown to select 2019 as the year for admissions data sets because the first data set is specific to 2019.
+
+![](collegeadmissions.jpg)
+
+
+## Data Preparation
+I obtained the data through downloading the data set from kaggle. It appeared as a zip file on my laptop, so I converted it to a .csv file so it's easier to import into R Studio. For the second data set, I had to use drop down features on the website, download it as a .csv, then add it to my Intro to DS folder so that RStudio could recognize the file. Both data sets have the name of the college in common. I had to rename the college name column from the first data set to the same one as the other so that I could merge them. One thing I found challenging was adjusting the binwidth, or the display of the data. Since I used a function for the univariate graphs, the binwidth varied based on the variable; however, I found it inefficient to update each graph with a different binwidth value, so I hid the warning message. In the future, however, I should use a mathematical formula and pass the value as a parameter with the variable so it can produce the graph with the best binwidth value and make the report more visually appealing. 
+
+```{r echo = FALSE, warning = FALSE}
+college$accptrate <- college$Accept/college$Apps
+college$yieldrate <- college$Enroll/college$Accept
+colnames(college)[1] = "schoolname"
+mergedcollege <- merge(college,college1,by="schoolname")
+collegefinal <-select(mergedcollege, "Private", "Apps", "Room.Board", "S.F.Ratio", "accptrate", "yieldrate", "Grad.Rate", "UGGPA75", "PhD", "Expend", "Top10perc")
+```
+
+## Variable Descriptions
+
+```{r echo = FALSE, warning = FALSE}
+variable_table <- tribble(~"Variable (type) ", ~" Description", "Apps (int)", "# of applications university received", "Room.Board (int)", "Monthly Room & Board Cost","accptrate (num)", "Acceptance rate of the university", "yieldrate (num)", "Percentage of admitted students that chose to enroll", "S.F.Ratio (num)", "Student to Faculty Ratio", "UGGPA75 (num)", "75th percentile of undergraduate GPA", "Top10perc (int)", "New students from top 10% of high school", "Grad.rate (int)", "Graduation rate of the university", "Private (chr)", "private or public university", "Expend (int)", "Personal Expenditures") 
+kable(variable_table)
+```
+
+## Univariate Graphs 
+```{r echo = FALSE, message=FALSE}
+collegefunction<- function(vartype, graphtype, title){
+  if(is.numeric(vartype)){
+    if(graphtype == "baseR"){
+      hist(vartype, main = "Histogram", col = "lightgreen", xlab = "")
+    }
+    else{
+      ggplot() + aes(vartype) + geom_histogram(col = "purple", fill = "lavender") + xlab(title) 
+      
+      
+    }
+  }
+  else{
+    print(prop.table(table(vartype)))
+    if(graphtype == "baseR"){
+      barplot(table(vartype), main = "Frequency", col = "pink")
+    }
+    else{
+      ggplot() + aes(vartype) + geom_bar(col = "magenta", fill = "pink") + xlab("Categorical Variable")
+    }
+  }
+}
+
+collegeunivariate <-select(collegefinal, "Apps","Room.Board","Grad.Rate","PhD", "Expend")
+
+collegefunction(collegefinal$Apps, "ggplot", "Number of Applications")
+collegefunction(collegefinal$Grad.Rate, "ggplot", "Graduation Rate")
+collegefunction(collegefinal$Room.Board, "ggplot", "Room & Board Cost")
+collegefunction(collegefinal$Private, "ggplot", "Private vs. Public University")
+collegefunction(collegefinal$Expend, "ggplot", "Estimated Personal Spending")
+collegefunction(collegefinal$PhD, "ggplot", "Percentage of Faculty with PhDs")
+
+
+for (i in colnames(collegeunivariate)){
+  print(i)
+  value <- mean(collegeunivariate[[i]])
+  print(paste("Mean:", round(value)))
+}
+  
+```
+## Univariate Analyses
+The average number of apps submitted to universities across the U.S. in 2019 was 6354 to each university. This statistic is not as helpful compared to simple viewing the distribution in the graph, which shows that more colleges receive under 10,000 applications. 
+
+The average monthly cost for housing was $4,880. This number is interesting because multiple factors affect housing costs, such as the type of university (public or private) as well as if the student is in state or out of state. Private universities have a fixed price for housing regardless of where the student is from, whereas housing tends to be less costly for in state students attending public universities. Additionally, some people earn merit or financial aid, which alleviates some of their housing costs.
+
+The average graduation rate for students who attend universities in the U.S. is 69% compared to 83%. This statistic suggests that academics in college is significantly harder as a lower percentage of people successfully graduate.
+
+On average, 85% of universities in the U.S. have faculty with PhDs. Some universities require them for becoming higher level professors, while some prefer. However, it can be reasonably concluded that professors generally tend to have a PhD. 
+
+The personal expenditure graph has a vast variation. Most universities estimate that people spend under $20K. The average is around 13K dollars.
+
+
+I was always curious regarding the distribution between public and private universities and was surprised to see that about 70% are private.
+
+## Multivariate Graphs
+The following graphs aim to find a correlation between a set of two variables labeled. These variables are factors that families consider individually when applying and selecting a college; however, it's worth looking at how their relation can impact decisions. The value under each graph is the correlation coefficient, which is used to determine if something can be said about the two variables.
+
+```{r echo = FALSE, warning = FALSE}
+cggplot <-ggplot(collegefinal)
+
+cggplot + geom_point(aes(x=accptrate, y=yieldrate), color = 'darkblue') + labs(title="Enrollment Rate vs. Acceptance Rate", x= "Acceptance Rate (%)", y='Enrollment Rate')
+
+print(cor(collegefinal$accptrate, collegefinal$yieldrate))
+
+cggplot + geom_point(aes(x=S.F.Ratio, y=yieldrate), color = 'red') + labs(title="Enrollment Rate vs. Student:Faculty Ratio", x= "Student:Faculty Ratio", y='Enrollment Rate')
+
+print(cor(collegefinal$S.F.Ratio, collegefinal$yieldrate))
+
+cggplot + geom_point(aes(x=Room.Board, y=yieldrate), color = 'darkgreen') + labs(title="Enrollment Rate vs. Room & Board Cost", x= "Room & Board Cost", y='Enrollment Rate')
+
+print(cor(collegefinal$Room.Board, collegefinal$yieldrate))
+
+cggplot + geom_point(aes(x=UGGPA75, y=Top10perc), color = 'blue') + labs(title="Top 10% of High School vs. Undergraduate GPA (75th Percentile)", x= "Undergraduate GPA (75th Percentile)", y="Top 10% of High School")
+
+print(cor(collegefinal$UGGPA75, collegefinal$Top10perc))
+
+cggplot + geom_point(aes(x=Grad.Rate, y=accptrate), color = 'black') + labs(title="Acceptance Rate vs. Graduation Rate", x= "Graduation Rate", y='Acceptace Rate')
+
+print(cor(collegefinal$Grad.Rate, collegefinal$accptrate))
+
+cggplot + geom_point(aes(x=yieldrate, y=accptrate), color = 'magenta') + labs(title="Acceptance Rate vs. Yield Rate", x= "Yield Rate", y='Acceptance Rate')
+
+print(cor(collegefinal$yieldrate, collegefinal$accptrate))
+
+```
+
+## Multivariate Analyses 
+There is a negative correlation between enrollment rate and acceptance rate, meaning as acceptance rate increases, the enrollment rate tends to decrease. This makes sense because people tend to focus on the prestige of a school, believing that a school is more prestigious if it has a lower acceptance rate.
+
+The positive association between student to faculty ratio and enrollment rate means that people tend to choose colleges that have a higher student to faculty ratio. This statistic caught me off guard because I thought people would want a smaller student to faculty ratio, so that they could get more attention and focus from the professor.
+
+As room and board cost increases, less people tend to enroll because they do not want to pay so much for housing, especially not knowing the quality of them.
+
+Colleges with a higher 75% of undergraduate GPA tend to have more students that were in the top 10% of their high school. This association makes sense because these students who excelled in high school are more likely to have higher academic potential, helping them shine at the universities they choose.
+
+As graduation rate decreases, acceptance rate often increases. This association makes sense because colleges that accept more students are less stringent on students' academic success in high school, and these students may find college more difficult than the most intelligent students. 
+
+Yield rate describes the percentage of admitted students that choose to enroll at a university. This statistic is extremely helpful to college admissions officers so they can determine how many students they should admit without over enrolling. The graph depicts that colleges with a lower acceptance rate tend to have a higher yield rate. Students are more likely to pick colleges that have lower acceptance rates, so a larger percentage of admitted students would pick these competitive universities.
+
+
+## Reproducibility Resources: 
+
+1. Project2.html: the html report (output) produced based on code developed in RStudio
+2. Project2.Rmd: R Markdown file with all the code developed to produce the html file
+3. College_Data.csv: CSV file that contains information about colleges with most variables used from here
+4. DataSet_Admissions.csv: CSV file (second data set) used to get information about undergraduate GPAs and merge with previous data set
+5. collegeadmissions.jpg: image used at at the top of the report
+6. README.md: more information from the developer regarding the report and code 
+
+
+## Choice Elements
+
+I used Element A when I merged the two data sets by college name. I created two new variables (yield rate and acceptance rate), which is choice C. I used a for loop to calculate the mean for the univariate analyses and print the mean for each variable in that. I defined a function that I used for generating and printing the univariate graphs. This function had a few parameters passed such as the variable for which the graph should be shown, the title of the graph, the axis labels, and the type of graph. Lastly, within the function I used an if statement which would determine if the variable passed is numeric or categorical, so it could make the appropriate graph.
+
+## References
+
+"US College Data". Kaggle.Com, 2022, https://www.kaggle.com/datasets/yashgpt/us-college-data. Accessed 17 Nov 2022.
+
+"Analytix". Analytix.Accesslex.Org, 2022, https://analytix.accesslex.org/download-dataset. Accessed 17 Nov 2022.
+
+U.S., Where. "Where Are The Highest & Lowest Graduation Rates In The U.S. | U.S. Career Institute - USCI". U.S. Career Institute, 2022, https://www.uscareerinstitute.edu/blog/where-are-the-highest-graduation-rates-in-the-us#:~:text=What%20state%20has%20the%20lowest,83%25%20high%20school%20graduation%20rate. Accessed 18 Nov 2022.
+
